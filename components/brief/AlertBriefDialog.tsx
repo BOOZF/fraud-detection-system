@@ -2,11 +2,13 @@
 
 import { FileText } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage, getBrief } from "@/lib/api";
 import type { Brief, BriefCitation } from "@/lib/types";
+import { myr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { DocumentViewer } from "@/components/viewer/DocumentViewer";
 import { ProbBadge } from "../ProbBadge";
@@ -26,6 +28,40 @@ function BriefSkeleton() {
         <Skeleton key={i} className="h-28 w-full" />
       ))}
     </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+/** The transaction at a glance and the rule-based reasons it was flagged (these never come from the language model). */
+function Summary({ brief }: { brief: Brief }) {
+  const f = brief.facts;
+  return (
+    <section aria-label="Transaction summary" className="space-y-3 rounded-lg border bg-muted/40 p-4">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+        <Fact label="Amount" value={myr(f.amount_myr)} />
+        <Fact label="Channel" value={f.channel} />
+        <Fact label="Merchant" value={f.merchant_cat} />
+        <Fact label="Time" value={f.txn_ts.slice(0, 16)} />
+      </dl>
+      <div>
+        <p className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Risk indicators</p>
+        <ul className="flex flex-wrap gap-1.5">
+          {brief.indicators.map((r) => (
+            <li key={r}>
+              <Badge variant="warning">{r}</Badge>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -69,7 +105,12 @@ function BriefBody({ txnId, prob }: { txnId: number; prob: number }) {
           <span className="text-2xl font-semibold">
             <ProbBadge prob={brief?.prob ?? prob} />
           </span>
-          {brief && <p className="font-medium">{brief.headline}</p>}
+          {brief && (
+            <p className="font-medium">
+              <span className="mr-2 text-xs font-normal uppercase tracking-wide text-muted-foreground">Recommended action</span>
+              {brief.headline}
+            </p>
+          )}
         </div>
       </div>
 
@@ -84,10 +125,16 @@ function BriefBody({ txnId, prob }: { txnId: number; prob: number }) {
             </div>
           )}
           {!brief && !error && <BriefSkeleton />}
+          {brief && <Summary brief={brief} />}
           {brief?.items.map((item) => (
             <section key={item.question} className="space-y-2 rounded-lg border bg-card p-4">
-              <h3 className="font-semibold">{item.question}</h3>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.answer}</p>
+              <h3 className="text-sm font-medium text-muted-foreground">{item.question}</h3>
+              <p className="text-base font-semibold leading-snug">{item.verdict}</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                {item.points.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
               {item.citations.length > 0 && (
                 <ul className="flex flex-wrap gap-2">
                   {item.citations.map((c) => {
@@ -116,7 +163,7 @@ function BriefBody({ txnId, prob }: { txnId: number; prob: number }) {
         </div>
         {showViewer && (
           <DocumentViewer
-            target={{ doc: active.doc, section: active.section, page: active.page, text: active.text }}
+            target={{ doc: active.doc, section: active.section, page: active.page, text: active.text, chunkId: active.chunk_id }}
             onClose={() => setActive(null)}
             className="min-h-96 lg:h-full"
           />
@@ -126,7 +173,7 @@ function BriefBody({ txnId, prob }: { txnId: number; prob: number }) {
       {brief && (
         <div className="flex flex-wrap items-center gap-3 border-t px-6 py-3 text-xs text-muted-foreground">
           <span>
-            Retrieval {brief.retrieval_ms} ms | LLM {brief.llm_ms} s
+            Retrieval {brief.retrieval_ms} ms | LLM {(brief.llm_ms / 1000).toFixed(1)} s
           </span>
           <TdBadge />
         </div>

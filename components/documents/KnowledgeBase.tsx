@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Eye, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { TdBadge } from "@/components/TdBadge";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DocumentViewer } from "@/components/viewer/DocumentViewer";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { deleteDocument, errorMessage } from "@/lib/api";
 import type { DocumentInfo } from "@/lib/types";
@@ -29,6 +30,7 @@ interface Props {
 
 export function KnowledgeBase({ docs, error, onRetry, onDeleted }: Props) {
   const [target, setTarget] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -98,7 +100,18 @@ export function KnowledgeBase({ docs, error, onRetry, onDeleted }: Props) {
             <TableBody>
               {docs.map((d) => (
                 <TableRow key={d.doc}>
-                  <TableCell className="font-medium">{d.doc}</TableCell>
+                  <TableCell className="font-medium">
+                    <button
+                      type="button"
+                      aria-label={`View ${d.doc}`}
+                      title="Open the original document"
+                      onClick={() => setViewing(d.doc)}
+                      className="inline-flex items-center gap-1.5 text-left underline-offset-4 hover:text-primary hover:underline"
+                    >
+                      <Eye aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                      {d.doc}
+                    </button>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{d.kind.toUpperCase()}</Badge>
                   </TableCell>
@@ -125,6 +138,15 @@ export function KnowledgeBase({ docs, error, onRetry, onDeleted }: Props) {
         )}
       </CardContent>
     </Card>
+    <Dialog open={viewing !== null} onOpenChange={(o) => !o && setViewing(null)}>
+      <DialogContent className="h-[90vh] max-w-[95vw] grid-rows-[auto_minmax(0,1fr)] gap-3 p-4 sm:max-w-[min(1100px,95vw)]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{viewing}</DialogTitle>
+          <DialogDescription>Original document</DialogDescription>
+        </DialogHeader>
+        {viewing && <DocumentViewer target={{ doc: viewing, section: "", page: null, text: "" }} onClose={() => setViewing(null)} className="min-h-0" />}
+      </DialogContent>
+    </Dialog>
     <Dialog open={target !== null} onOpenChange={(o) => !o && close()}>
       <DialogContent>
         <DialogHeader>

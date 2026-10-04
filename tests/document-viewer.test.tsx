@@ -57,3 +57,17 @@ it("calls onClose from the close button, which only exists when a handler is giv
   rerender(<DocumentViewer target={pdf} />);
   expect(screen.queryByRole("button", { name: /close viewer/i })).not.toBeInTheDocument();
 });
+
+it("asks the server to highlight the cited passage when the citation carries a chunk id", () => {
+  expect(documentUrl("Fraud_Detection_SOP.pdf", 12, 7)).toBe("/api/documents/Fraud_Detection_SOP.pdf/file?chunk=7#page=12");
+  render(<DocumentViewer target={{ ...pdf, chunkId: 7 }} />);
+  expect(screen.getByTitle("Fraud_Detection_SOP.pdf, page 12")).toHaveAttribute(
+    "src",
+    "/api/documents/Fraud_Detection_SOP.pdf/file?chunk=7#page=12",
+  );
+});
+
+it("opens a whole document (no citation) from its first page", () => {
+  render(<DocumentViewer target={{ doc: "Fraud_Detection_SOP.pdf", section: "", page: null, text: "" }} />);
+  expect(screen.getByTitle("Fraud_Detection_SOP.pdf")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file");
+});

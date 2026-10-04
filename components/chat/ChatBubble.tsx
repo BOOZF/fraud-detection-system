@@ -165,7 +165,7 @@ function ChatPanel() {
               </DialogHeader>
               <DocumentViewer
                 className="h-[70vh]"
-                target={{ doc: viewing.doc, section: viewing.section, page: viewing.page, text: viewing.text }}
+                target={{ doc: viewing.doc, section: viewing.section, page: viewing.page, text: viewing.text, chunkId: viewing.chunk_id }}
               />
             </>
           )}
@@ -187,7 +187,8 @@ function MessageRow({ message, onCite }: { message: ChatMessage; onCite: (c: Cha
       )}
       <div
         className={cn(
-          "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+          "rounded-lg px-3 py-2 text-sm",
+          isUser || !message.content.includes("|") ? "max-w-[85%]" : "max-w-full",
           isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
         )}
       >

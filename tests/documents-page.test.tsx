@@ -189,3 +189,27 @@ describe("Documents page: delete", () => {
     expect(await screen.findByText("Unknown document")).toBeInTheDocument();
   });
 });
+
+describe("Documents page: view the original", () => {
+  it("opens a PDF in the viewer when its name is clicked, and closes it again", async () => {
+    getDocuments.mockResolvedValue([SOP, OPS]);
+    const user = userEvent.setup();
+    render(<DocumentsPage />);
+    await user.click(await screen.findByRole("button", { name: "View Fraud_Detection_SOP.pdf" }));
+    const viewer = await screen.findByRole("region", { name: "Viewing Fraud_Detection_SOP.pdf" });
+    expect(within(viewer).getByTitle("Fraud_Detection_SOP.pdf")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file");
+    await user.click(screen.getByRole("button", { name: "Close viewer" }));
+    expect(screen.queryByRole("region", { name: /Viewing/ })).not.toBeInTheDocument();
+  });
+
+  it("every uploaded document can be opened, and a text document shows its content", async () => {
+    getDocuments.mockResolvedValue([SOP, OPS]);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: async () => "Priority 1 alerts within 15 minutes." }));
+    const user = userEvent.setup();
+    render(<DocumentsPage />);
+    await user.click(await screen.findByRole("button", { name: "View Fraud_Operations_SOP.md" }));
+    const viewer = await screen.findByRole("region", { name: "Viewing Fraud_Operations_SOP.md" });
+    expect(await within(viewer).findByText("Priority 1 alerts within 15 minutes.")).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+});

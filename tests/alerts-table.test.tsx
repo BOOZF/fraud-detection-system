@@ -206,7 +206,10 @@ it("turns each row's probability into a button that opens the copilot brief for 
   getAlerts.mockResolvedValue(make(3));
   getBrief.mockResolvedValue({
     txn_id: 101, prob: 0.51, priority: null, headline: "Review within the standard queue",
-    items: [{ question: "Why was this flagged?", answer: "Because.", citations: [] }], retrieval_ms: 10, llm_ms: 1.2,
+    facts: { amount_myr: 200, channel: "FPX", merchant_cat: "GROCERY", hour_of_day: 9, txn_ts: "2026-07-15 09:00:00" },
+    indicators: ["New device"],
+    items: [{ question: "Why was this flagged?", verdict: "Because.", points: ["Because."], answer: "Because.", citations: [] }],
+    retrieval_ms: 10, llm_ms: 1200,
   });
   const user = userEvent.setup();
   render(<AlertsTable />);

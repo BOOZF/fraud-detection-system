@@ -85,8 +85,18 @@ export interface BriefCitation {
 
 export interface BriefItem {
   question: string;
+  verdict: string;
+  points: string[];
   answer: string;
   citations: BriefCitation[];
+}
+
+export interface BriefFacts {
+  amount_myr: number;
+  channel: string;
+  merchant_cat: string;
+  hour_of_day: number;
+  txn_ts: string;
 }
 
 export interface Brief {
@@ -94,6 +104,8 @@ export interface Brief {
   prob: number;
   priority: "P1" | "P2" | null;
   headline: string;
+  facts: BriefFacts;
+  indicators: string[];
   items: BriefItem[];
   retrieval_ms: number;
   llm_ms: number;

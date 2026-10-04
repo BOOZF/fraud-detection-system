@@ -26,10 +26,14 @@ function brief(txn_id: number): Brief {
     priority: "P1",
     headline: "Freeze the card and call the customer now",
     retrieval_ms: 412,
-    llm_ms: 12.5,
+    llm_ms: 3709,
+    facts: { amount_myr: 1028.23, channel: "CARD_ECOM", merchant_cat: "TRAVEL", hour_of_day: 1, txn_ts: "2026-07-15 06:39:13" },
+    indicators: ["Foreign transaction", "Amount 16.3x the 30-day average"],
     items: QUESTIONS.map((question, i) => ({
       question,
-      answer: `Answer number ${i + 1}`,
+      verdict: `Verdict number ${i + 1}`,
+      points: [`First point ${i + 1}`, `Second point ${i + 1}`],
+      answer: `First point ${i + 1} Second point ${i + 1}`,
       citations:
         i === 0
           ? [
@@ -58,9 +62,10 @@ it("shows progress while loading, then the headline, five questions in order, an
   expect(screen.getByText("P1")).toBeInTheDocument();
   expect(screen.getByText("93%")).toBeInTheDocument();
   expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(QUESTIONS);
-  expect(screen.getByText("Answer number 1")).toBeInTheDocument();
-  expect(screen.getByText("Answer number 5")).toBeInTheDocument();
-  expect(screen.getByText("Retrieval 412 ms | LLM 12.5 s")).toBeInTheDocument();
+  expect(screen.getByText("Verdict number 1")).toBeInTheDocument();
+  expect(screen.getByText("Verdict number 5")).toBeInTheDocument();
+  expect(screen.getByText("First point 3")).toBeInTheDocument();
+  expect(screen.getByText("Retrieval 412 ms | LLM 3.7 s")).toBeInTheDocument();
   expect(screen.getAllByText(/computed in teradata/i).length).toBeGreaterThan(0);
   expect(screen.getByRole("button", { name: "Fraud_Detection_SOP.pdf · p.12" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Fraud_Operations_SOP.md · 4.1" })).toBeInTheDocument();
@@ -69,7 +74,7 @@ it("shows progress while loading, then the headline, five questions in order, an
 it("has no text input", async () => {
   getBrief.mockResolvedValue(brief(202));
   open(202);
-  await screen.findByText("Answer number 1");
+  await screen.findByText("Verdict number 1");
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
 });
 
@@ -81,12 +86,12 @@ it("opens a PDF citation at its page beside the answers, and switches page on an
   expect(document.querySelector("iframe")).toBeNull();
 
   await user.click(chipA);
-  expect(document.querySelector("iframe")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file#page=12");
+  expect(document.querySelector("iframe")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file?chunk=1#page=12");
   expect(chipA).toHaveAttribute("aria-pressed", "true");
 
   const chipB = screen.getByRole("button", { name: "Fraud_Detection_SOP.pdf · p.54" });
   await user.click(chipB);
-  expect(document.querySelector("iframe")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file#page=54");
+  expect(document.querySelector("iframe")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file?chunk=2#page=54");
   expect(chipB).toHaveAttribute("aria-pressed", "true");
   expect(chipA).toHaveAttribute("aria-pressed", "false");
 });
@@ -117,10 +122,10 @@ it("shows the error with a Retry that refetches, bypassing the cache", async () 
 it("reopening the same alert uses the cache without calling the API again", async () => {
   getBrief.mockResolvedValue(brief(206));
   const first = open(206);
-  await screen.findByText("Answer number 1");
+  await screen.findByText("Verdict number 1");
   first.unmount();
   open(206);
-  expect(await screen.findByText("Answer number 1")).toBeInTheDocument();
+  expect(await screen.findByText("Verdict number 1")).toBeInTheDocument();
   expect(getBrief).toHaveBeenCalledTimes(1);
 });
 
@@ -129,4 +134,17 @@ it("marks the dialog content with the alert it is about", async () => {
   open(204);
   const dialog = await screen.findByRole("dialog", { name: "Alert #204" });
   expect(dialog.getAttribute("data-alert-id")).toBe("204");
+});
+
+it("leads with the transaction facts and the rule-based risk indicators, then the answers as bullet points", async () => {
+  getBrief.mockResolvedValue(brief(207));
+  open(207);
+  await screen.findByText("Verdict number 1");
+  const summary = screen.getByRole("region", { name: "Transaction summary" });
+  expect(within(summary).getByText("RM 1,028.23")).toBeInTheDocument();
+  expect(within(summary).getByText("CARD_ECOM")).toBeInTheDocument();
+  expect(within(summary).getByText("Foreign transaction")).toBeInTheDocument();
+  expect(within(summary).getByText("Amount 16.3x the 30-day average")).toBeInTheDocument();
+  const first = screen.getByRole("heading", { level: 3, name: QUESTIONS[0] }).closest("section") as HTMLElement;
+  expect(within(first).getAllByRole("listitem").map((li) => li.textContent).slice(0, 2)).toEqual(["First point 1", "Second point 1"]);
 });

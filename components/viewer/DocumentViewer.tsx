@@ -1,13 +1,34 @@
 "use client";
 
 import { ExternalLink, FileText, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { documentUrl } from "@/lib/document-url";
 import { cn } from "@/lib/utils";
 
-/** What a citation points at: a document plus the chunk's section label, first PDF page (if any) and excerpt. */
-export type ViewerTarget = { doc: string; section: string; page: number | null; text: string };
+/**
+ * What to show: a citation (document + the chunk's section label, first PDF page, excerpt, chunk id so the server can
+ * highlight it) or a whole document (empty `section` and `text`).
+ */
+export type ViewerTarget = { doc: string; section: string; page: number | null; text: string; chunkId?: number };
+
+/** Full text of a non-PDF document, for opening it from the Documents page. */
+function useFileText(doc: string, enabled: boolean) {
+  const [loaded, setLoaded] = useState<{ doc: string; text: string } | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    fetch(documentUrl(doc))
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+      .then((text) => !cancelled && setLoaded({ doc, text }))
+      .catch(() => !cancelled && setLoaded({ doc, text: "Could not load this document." }));
+    return () => {
+      cancelled = true;
+    };
+  }, [doc, enabled]);
+  return loaded?.doc === doc ? loaded.text : null;
+}
 
 export function DocumentViewer({
   target,
@@ -19,16 +40,21 @@ export function DocumentViewer({
   className?: string;
 }) {
   const isPdf = target.doc.toLowerCase().endsWith(".pdf");
-  const url = documentUrl(target.doc, isPdf ? target.page : null);
+  const url = documentUrl(target.doc, isPdf ? target.page : null, isPdf ? target.chunkId : null);
+  const wholeText = !isPdf && !target.text;
+  const fileText = useFileText(target.doc, wholeText);
+  const excerpt = wholeText ? (fileText ?? "Loading...") : target.text;
 
   return (
     <section aria-label={`Viewing ${target.doc}`} className={cn("flex min-h-0 flex-col rounded-lg border bg-card", className)}>
       <header className="flex items-center gap-2 border-b px-3 py-2">
         <FileText aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <span className="truncate text-sm font-medium">{target.doc}</span>
-        <Badge variant="secondary" className="shrink-0">
-          {isPdf && target.page ? `Page ${target.page}` : `Section ${target.section}`}
-        </Badge>
+        {(target.page || target.section) && (
+          <Badge variant="secondary" className="shrink-0">
+            {isPdf && target.page ? `Page ${target.page}` : `Section ${target.section}`}
+          </Badge>
+        )}
         <a
           href={url}
           target="_blank"
@@ -54,8 +80,8 @@ export function DocumentViewer({
         />
       ) : (
         <div className="min-h-0 flex-1 overflow-auto p-4">
-          <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Cited excerpt</p>
-          <blockquote className="whitespace-pre-wrap border-l-2 pl-3 text-sm leading-relaxed">{target.text}</blockquote>
+          {!wholeText && <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Cited excerpt</p>}
+          <blockquote className="whitespace-pre-wrap border-l-2 pl-3 text-sm leading-relaxed">{excerpt}</blockquote>
         </div>
       )}
     </section>
