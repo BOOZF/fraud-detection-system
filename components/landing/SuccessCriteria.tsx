@@ -25,7 +25,7 @@ export function SuccessCriteria() {
     },
     {
       title: "GenAI answers grounded in bank policy with citations",
-      proof: "The copilot cites SOP sections, for example [SOP 4.1].",
+      proof: "The copilot cites document pages, for example [Fraud_Detection_SOP.pdf p.45], and opens them side by side.",
     },
     {
       title: "Copilot refuses out-of-scope questions",

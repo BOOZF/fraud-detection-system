@@ -49,8 +49,21 @@ export interface Txn {
   is_fraud: 0 | 1;
 }
 
+export interface CustomerSummary {
+  customer_id: number;
+  account_age_days: number;
+  txn_count: number;
+  flagged_count: number;
+  avg_amount_myr: number;
+  total_amount_myr: number;
+  first_txn_ts: string;
+  last_txn_ts: string;
+}
+
 export interface AlertDetail {
   txn: Txn;
+  customer: CustomerSummary;
+  sql_customer: string;
   prob: number;
   reasons: string[];
   sql: string;
@@ -62,15 +75,40 @@ export interface ScoreResult {
   sql: string;
 }
 
-export interface Citation {
+export interface BriefCitation {
   doc: string;
   chunk_id: number;
+  section: string;
+  page: number | null;
   text: string;
 }
 
-export interface CopilotResponse {
+export interface BriefItem {
+  question: string;
   answer: string;
-  citations: Citation[];
+  citations: BriefCitation[];
+}
+
+export interface Brief {
+  txn_id: number;
+  prob: number;
+  priority: "P1" | "P2" | null;
+  headline: string;
+  items: BriefItem[];
   retrieval_ms: number;
   llm_ms: number;
+}
+
+export interface DocumentInfo {
+  doc: string;
+  kind: "pdf" | "md" | "txt";
+  pages: number | null;
+  chunks: number;
+  bytes: number;
+  uploaded_at: string;
+}
+
+export interface DeleteResult {
+  deleted: string;
+  chunks: number;
 }

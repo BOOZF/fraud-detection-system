@@ -20,7 +20,8 @@ import { getAlerts } from "@/lib/api";
 import type { Alert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { TdBadge } from "../TdBadge";
-import { columns } from "./columns";
+import { AlertBriefDialog } from "../brief/AlertBriefDialog";
+import { createColumns } from "./columns";
 import { RangeFilter } from "./RangeFilter";
 import { features } from "./data-table-features";
 
@@ -43,21 +44,14 @@ const AMOUNT_STEP = 10;
 const rm = (n: number) => `RM ${n.toLocaleString("en-US")}`;
 const pct = (n: number) => `${n}%`;
 
-type Bounds = { prob: [number, number]; amount: [number, number] };
-
-/** Slider spans taken from the data itself, widened to whole steps so every row is inside the full range. */
-function boundsOf(alerts: Alert[]): Bounds {
-  if (alerts.length === 0) return { prob: [0, 100], amount: [0, AMOUNT_STEP] };
-  const probs = alerts.map((a) => Math.round(a.prob * 100));
-  const amounts = alerts.map((a) => a.amount_myr);
-  const span = (lo: number, hi: number): [number, number] => (hi > lo ? [lo, hi] : [lo, lo + 1]);
-  const amountLo = Math.floor(Math.min(...amounts) / AMOUNT_STEP) * AMOUNT_STEP;
-  const amountHi = Math.ceil(Math.max(...amounts) / AMOUNT_STEP) * AMOUNT_STEP;
-  return {
-    prob: span(Math.min(...probs), Math.max(...probs)),
-    amount: [amountLo, amountHi > amountLo ? amountHi : amountLo + AMOUNT_STEP],
-  };
-}
+/**
+ * Fixed slider spans. A slider left at its full span means "no filter", so an alert outside the span
+ * (for example an amount above RM 5,000) is never hidden by default.
+ */
+const BOUNDS: { prob: [number, number]; amount: [number, number] } = {
+  prob: [0, 100],
+  amount: [0, 5000],
+};
 
 const sameRange = (a: [number, number], b: [number, number]) => a[0] === b[0] && a[1] === b[1];
 
@@ -65,9 +59,20 @@ function AlertsTableView({ alerts }: { alerts: Alert[] }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "prob", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
-  const bounds = useMemo(() => boundsOf(alerts), [alerts]);
+  const bounds = BOUNDS;
   const [probRange, setProbRange] = useState<[number, number]>(bounds.prob);
   const [amountRange, setAmountRange] = useState<[number, number]>(bounds.amount);
+
+  const [briefAlert, setBriefAlert] = useState<Alert | null>(null);
+  const [briefOpen, setBriefOpen] = useState(false);
+  const columns = useMemo(
+    () =>
+      createColumns((alert) => {
+        setBriefAlert(alert);
+        setBriefOpen(true);
+      }),
+    [],
+  );
 
   const table = useTable({
     features,
@@ -181,7 +186,7 @@ function AlertsTableView({ alerts }: { alerts: Alert[] }) {
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id} data-alert-id={row.id}>
                 {row.getAllCells().map((cell) => (
                   <TableCell key={cell.id} className={cn(RIGHT_ALIGNED.has(cell.column.id) && "text-right")}>
                     <table.FlexRender cell={cell} />
@@ -241,6 +246,9 @@ function AlertsTableView({ alerts }: { alerts: Alert[] }) {
           </PaginationContent>
         </Pagination>
       </div>
+      {briefAlert && (
+        <AlertBriefDialog txnId={briefAlert.txn_id} prob={briefAlert.prob} open={briefOpen} onOpenChange={setBriefOpen} />
+      )}
     </div>
   );
 }

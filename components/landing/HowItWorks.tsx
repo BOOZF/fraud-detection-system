@@ -9,7 +9,7 @@ const STEPS = [
   },
   {
     title: "Investigate with the policy-grounded copilot",
-    body: "TD_VectorDistance retrieves the relevant SOP sections. The LLM answers with citations like [SOP 4.1] and refuses what the SOP does not cover.",
+    body: "TD_VectorDistance retrieves the relevant passages of the uploaded policy PDF. The LLM answers with page citations you can open side by side, and says so when the policy does not cover a question.",
   },
 ];
 

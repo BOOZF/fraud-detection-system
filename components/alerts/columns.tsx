@@ -7,7 +7,9 @@ import type { DataTableFeatures } from "./data-table-features";
 
 const columnHelper = createColumnHelper<DataTableFeatures, Alert>();
 
-export const columns = columnHelper.columns([
+/** Columns for the alert queue; `onOpenBrief` is called when a row's probability is clicked. */
+export const createColumns = (onOpenBrief: (alert: Alert) => void) =>
+  columnHelper.columns([
   columnHelper.accessor("txn_id", {
     header: "Transaction ID",
     sortFn: "basic",
@@ -22,7 +24,17 @@ export const columns = columnHelper.columns([
     header: "Probability",
     sortFn: "basic",
     filterFn: "percentBetween",
-    cell: (info) => <ProbBadge prob={info.getValue()} />,
+    cell: (info) => (
+      <button
+        type="button"
+        title="Open copilot brief"
+        aria-label={`Open copilot brief for #${info.row.original.txn_id}`}
+        onClick={() => onOpenBrief(info.row.original)}
+        className="cursor-pointer rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <ProbBadge prob={info.getValue()} />
+      </button>
+    ),
   }),
   columnHelper.accessor("amount_myr", {
     header: "Amount",

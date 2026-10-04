@@ -12,8 +12,8 @@ export default function DashboardPage() {
       <section id="alerts" className="scroll-mt-20 space-y-4 border-t pt-8">
         <h2 className="text-2xl font-semibold tracking-tight">Alert queue</h2>
         <p className="max-w-3xl text-muted-foreground">
-          Triage by model probability per SOP 4.1: Priority 1 (90% or higher) within 15 minutes, Priority 2 (80-89%)
-          within 2 hours. Highest risk first.
+          Highest model probability first. Priority 1 is a score of 90% or higher, Priority 2 is 80-89%. Click a
+          probability to open the copilot brief for that alert.
         </p>
         <AlertsTable />
       </section>

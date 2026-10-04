@@ -126,7 +126,7 @@ export function LandingPreview() {
             <p className="text-xs font-bold uppercase tracking-widest">Copilot, sample answer</p>
             <p className="sw-muted mt-3 max-w-3xl text-lg">
               This is a Priority 1 alert. A first-seen device, a foreign merchant and an unusually large amount match
-              the high-risk pattern. Freeze the card and contact the customer within 15 minutes [SOP 4.1].
+              the high-risk pattern. Escalate the case for fraud review and record the findings [Fraud_Detection_SOP.pdf p.48].
             </p>
           </div>
         </TabsContent>

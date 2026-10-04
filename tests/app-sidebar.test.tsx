@@ -31,9 +31,10 @@ const renderSidebar = () =>
   );
 
 describe("AppSidebar", () => {
-  it("links to Dashboard and Architecture only, under the Malaysia XX Bank brand", () => {
+  it("links to Dashboard, Documents and Architecture only, under the Malaysia XX Bank brand", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByRole("link", { name: /documents/i })).toHaveAttribute("href", "/documents");
     expect(screen.getByRole("link", { name: /architecture/i })).toHaveAttribute("href", "/architecture");
     expect(screen.queryByRole("link", { name: /^alerts$/i })).not.toBeInTheDocument();
     expect(screen.getByText("Malaysia XX Bank")).toBeInTheDocument();
@@ -48,6 +49,13 @@ describe("AppSidebar", () => {
     pathname = "/architecture";
     renderSidebar();
     expect(screen.getByRole("link", { name: /architecture/i })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /dashboard/i })).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks Documents active on /documents", () => {
+    pathname = "/documents";
+    renderSidebar();
+    expect(screen.getByRole("link", { name: /documents/i })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /dashboard/i })).not.toHaveAttribute("aria-current");
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, LogOut, Network } from "lucide-react";
+import { FileText, LayoutDashboard, LogOut, Network } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -22,7 +22,8 @@ import { TdBadge } from "./TdBadge";
 
 // `also` lists extra path prefixes that keep an item highlighted (alert detail pages belong to the dashboard).
 const ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, also: ["/alerts/"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, also: ["/alerts/"] as string[] },
+  { href: "/documents", label: "Documents", icon: FileText, also: [] as string[] },
   { href: "/architecture", label: "Architecture", icon: Network, also: [] as string[] },
 ];
 

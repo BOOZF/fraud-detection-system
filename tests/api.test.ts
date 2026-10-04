@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getKpis, getAlerts, getAlert, getModel, rescore, askCopilot } from "@/lib/api";
+import { getKpis, getAlerts, getAlert, getModel, rescore, getBrief, getDocuments, uploadDocument, deleteDocument, errorMessage } from "@/lib/api";
 
 const fetchMock = vi.fn();
 beforeEach(() => {
@@ -61,13 +61,57 @@ describe("api endpoints", () => {
     expect(r.rows).toBe(10);
   });
 
-  it("askCopilot POSTs JSON body", async () => {
-    fetchMock.mockReturnValue(ok({ answer: "a", citations: [], retrieval_ms: 1, llm_ms: 2 }));
-    await askCopilot(7, "Why?");
+  it("getBrief POSTs to the alert's brief endpoint with no body", async () => {
+    fetchMock.mockReturnValue(ok({ txn_id: 7, items: [] }));
+    const r = await getBrief(7);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/alerts/7/brief");
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
+    expect(fetchMock.mock.calls[0][1].body).toBeUndefined();
+    expect(r.txn_id).toBe(7);
+  });
+});
+
+describe("documents api", () => {
+  it("getDocuments hits /api/documents", async () => {
+    fetchMock.mockReturnValue(ok([]));
+    await getDocuments();
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/documents");
+  });
+
+  it("uploadDocument POSTs FormData with the file under `file` and no Content-Type header", async () => {
+    fetchMock.mockReturnValue(ok({ doc: "a.md", kind: "md", pages: null, chunks: 7, bytes: 3, uploaded_at: "x" }));
+    const file = new File(["abc"], "a.md", { type: "text/markdown" });
+    await uploadDocument(file);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("/api/copilot");
+    expect(url).toBe("/api/documents");
     expect(init.method).toBe("POST");
-    expect(init.headers).toMatchObject({ "Content-Type": "application/json" });
-    expect(init.body).toBe('{"txn_id":7,"question":"Why?"}');
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("file")).toBe(file);
+    expect(init.headers).toBeUndefined();
+  });
+
+  it("deleteDocument URL-encodes the name", async () => {
+    fetchMock.mockReturnValue(ok({ deleted: "a b.pdf", chunks: 2 }));
+    await deleteDocument("a b.pdf");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/documents/a%20b.pdf");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("throws on non-2xx", async () => {
+    fetchMock.mockReturnValue(Promise.resolve({ ok: false, status: 404, text: async () => '{"detail":"nope"}' }));
+    await expect(deleteDocument("x")).rejects.toThrow('404 {"detail":"nope"}');
+  });
+});
+
+describe("errorMessage", () => {
+  it("extracts detail from a JSON body", () => {
+    expect(errorMessage(new Error('413 {"detail":"File is larger than 25 MB"}'))).toBe("File is larger than 25 MB");
+  });
+  it("falls back to the raw text for non-JSON bodies", () => {
+    expect(errorMessage(new Error("502 Bad Gateway"))).toBe("502 Bad Gateway");
+  });
+  it("handles non-Error values", () => {
+    expect(errorMessage("weird")).toBe("Something went wrong");
   });
 });
