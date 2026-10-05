@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, LayoutDashboard, LogOut, Network } from "lucide-react";
+import { FileText, LayoutDashboard, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,7 +24,6 @@ import { TdBadge } from "./TdBadge";
 const ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, also: ["/alerts/"] as string[] },
   { href: "/documents", label: "Documents", icon: FileText, also: [] as string[] },
-  { href: "/architecture", label: "Architecture", icon: Network, also: [] as string[] },
 ];
 
 export function AppSidebar() {
@@ -37,7 +36,7 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="floating">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -68,7 +67,7 @@ export function AppSidebar() {
                 const active = [href, ...also].some((p) => pathname.startsWith(p));
                 return (
                   <SidebarMenuItem key={href}>
-                    <SidebarMenuButton asChild isActive={active} tooltip={label}>
+                    <SidebarMenuButton asChild isActive={active} tooltip={label} className="rounded-xl data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm">
                       <Link href={href} aria-current={active ? "page" : undefined}>
                         <Icon aria-hidden />
                         <span>{label}</span>

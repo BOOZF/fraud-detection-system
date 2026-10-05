@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
@@ -70,7 +70,8 @@ it("offers Open dashboard instead of Login when already signed in", async () => 
 it("shows the five criteria and the how-it-works steps below the hero", async () => {
   mockOk();
   render(<Landing />);
-  expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(5);
+  const criteria = document.querySelector("section#criteria") as HTMLElement;
+  expect(within(criteria).getAllByRole("heading", { level: 3 })).toHaveLength(5);
   expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
   expect(await screen.findByText("200,000 rows trained and scored in Teradata, training took 12.5 s")).toBeInTheDocument();
 });
@@ -105,4 +106,27 @@ it("falls back to sample text when the API is unavailable", async () => {
   await user.click(screen.getByRole("tab", { name: "Explain" }));
   expect(await screen.findByText("New device")).toBeInTheDocument();
   expect(screen.getByText(/sample alert/i)).toBeInTheDocument();
+});
+
+
+it("explains the architecture on the landing page: the flow, what runs where, and the path to production", () => {
+  mockOk();
+  render(<Landing />);
+  const section = document.querySelector("section#architecture") as HTMLElement;
+  expect(section).not.toBeNull();
+  expect(within(section).getByRole("heading", { level: 2, name: /architecture/i })).toBeInTheDocument();
+  for (const step of ["Next.js", "FastAPI", "Teradata", "Pluggable LLM"]) {
+    expect(within(section).getAllByText(step).length).toBeGreaterThan(0);
+  }
+  const table = within(section).getByRole("table");
+  expect(within(table).getAllByRole("row")).toHaveLength(7); // header + the six components
+  expect(within(table).getByText("TD_VectorDistance (retrieval)")).toBeInTheDocument();
+  expect(within(section).getByRole("heading", { level: 3, name: "Path to production" })).toBeInTheDocument();
+  expect(within(section).getByText("Local LLM for sovereignty")).toBeInTheDocument();
+});
+
+it("links to the architecture section from the hero", () => {
+  mockOk();
+  render(<Landing />);
+  expect(screen.getByRole("link", { name: "Architecture" })).toHaveAttribute("href", "#architecture");
 });

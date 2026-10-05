@@ -2,8 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
-const sendChat = vi.fn();
-vi.mock("@/lib/chat", () => ({ sendChat: (...a: unknown[]) => sendChat(...a) }));
+const streamChat = vi.fn();
+vi.mock("@/lib/chat", () => ({ streamChat: (...a: unknown[]) => streamChat(...a) }));
 
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import { ChatProvider } from "@/components/chat/ChatProvider";
@@ -18,7 +18,7 @@ const renderChat = () =>
 const open = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: "Open copilot chat" }));
 
 beforeEach(() => {
-  sendChat.mockReset();
+  streamChat.mockReset();
   Element.prototype.scrollIntoView = vi.fn();
 });
 
@@ -32,20 +32,20 @@ it("is closed by default and opens from the floating button", async () => {
 });
 
 it("sends a starter chip and shows the answer with minimal markdown", async () => {
-  sendChat.mockResolvedValue(reply("The rate is **1.2%**\n- first\n- second"));
+  streamChat.mockResolvedValue(reply("The rate is **1.2%**\n- first\n- second"));
   const user = userEvent.setup();
   renderChat();
   await open(user);
   await user.click(screen.getByRole("button", { name: "How many transactions need an alert now?" }));
 
-  expect(sendChat).toHaveBeenCalledWith([{ role: "user", content: "How many transactions need an alert now?" }], undefined, undefined);
+  expect(streamChat.mock.calls[0].slice(0, 3)).toEqual([[{ role: "user", content: "How many transactions need an alert now?" }], undefined, undefined]);
   expect(await screen.findByText("1.2%")).toContainHTML("<strong>1.2%</strong>");
   expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(["first", "second"]);
   expect(screen.queryByRole("button", { name: "How many transactions need an alert now?" })).not.toBeInTheDocument();
 });
 
 it("does not inject HTML from the answer", async () => {
-  sendChat.mockResolvedValue(reply("<img src=x alt=pwn> hello"));
+  streamChat.mockResolvedValue(reply("<img src=x alt=pwn> hello"));
   const user = userEvent.setup();
   renderChat();
   await open(user);
@@ -55,7 +55,7 @@ it("does not inject HTML from the answer", async () => {
 });
 
 it("sends the whole history on the second question", async () => {
-  sendChat.mockResolvedValueOnce(reply("A1")).mockResolvedValueOnce(reply("A2"));
+  streamChat.mockResolvedValueOnce(reply("A1")).mockResolvedValueOnce(reply("A2"));
   const user = userEvent.setup();
   renderChat();
   await open(user);
@@ -63,7 +63,7 @@ it("sends the whole history on the second question", async () => {
   await screen.findByText("A1");
   await user.type(screen.getByRole("textbox"), "Q2{Enter}");
   await screen.findByText("A2");
-  expect(sendChat).toHaveBeenLastCalledWith(
+  expect(streamChat.mock.lastCall!.slice(0, 3)).toEqual([
     [
       { role: "user", content: "Q1" },
       { role: "assistant", content: "A1" },
@@ -71,12 +71,12 @@ it("sends the whole history on the second question", async () => {
     ],
     undefined,
     undefined,
-  );
+  ]);
 });
 
 it("shows a thinking indicator and disables Send while waiting", async () => {
   let resolve!: (v: unknown) => void;
-  sendChat.mockReturnValue(new Promise((r) => (resolve = r)));
+  streamChat.mockReturnValue(new Promise((r) => (resolve = r)));
   const user = userEvent.setup();
   renderChat();
   await open(user);
@@ -90,7 +90,7 @@ it("shows a thinking indicator and disables Send while waiting", async () => {
 });
 
 it("shows the error detail and retries the last question", async () => {
-  sendChat.mockRejectedValueOnce(new Error('502 {"detail":"LLM unavailable"}')).mockResolvedValueOnce(reply("recovered"));
+  streamChat.mockRejectedValueOnce(new Error('502 {"detail":"LLM unavailable"}')).mockResolvedValueOnce(reply("recovered"));
   const user = userEvent.setup();
   renderChat();
   await open(user);
@@ -98,8 +98,8 @@ it("shows the error detail and retries the last question", async () => {
   expect(await screen.findByText("LLM unavailable")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Retry" }));
   expect(await screen.findByText("recovered")).toBeInTheDocument();
-  expect(sendChat).toHaveBeenCalledTimes(2);
-  expect(sendChat).toHaveBeenLastCalledWith([{ role: "user", content: "Q1" }], undefined, undefined);
+  expect(streamChat).toHaveBeenCalledTimes(2);
+  expect(streamChat.mock.lastCall!.slice(0, 3)).toEqual([[{ role: "user", content: "Q1" }], undefined, undefined]);
   expect(screen.queryByText("LLM unavailable")).not.toBeInTheDocument();
 });
 
@@ -110,15 +110,15 @@ it("cannot send empty or whitespace input; Shift+Enter adds a newline", async ()
   const send = screen.getByRole("button", { name: "Send" });
   expect(send).toBeDisabled();
   await user.type(screen.getByRole("textbox"), "   {Enter}");
-  expect(sendChat).not.toHaveBeenCalled();
+  expect(streamChat).not.toHaveBeenCalled();
   await user.clear(screen.getByRole("textbox"));
   await user.type(screen.getByRole("textbox"), "a{Shift>}{Enter}{/Shift}b");
   expect(screen.getByRole("textbox")).toHaveValue("a\nb");
-  expect(sendChat).not.toHaveBeenCalled();
+  expect(streamChat).not.toHaveBeenCalled();
 });
 
 it("keeps the conversation across close and reopen, and New chat clears it", async () => {
-  sendChat.mockResolvedValue(reply("A1"));
+  streamChat.mockResolvedValue(reply("A1"));
   const user = userEvent.setup();
   renderChat();
   await open(user);
@@ -142,7 +142,7 @@ it("closes on Escape", async () => {
 });
 
 it("opens a PDF citation in a viewer dialog at the cited page", async () => {
-  sendChat.mockResolvedValue(
+  streamChat.mockResolvedValue(
     reply("See SOP", {
       citations: [{ doc: "XX-SOP-FRAUD-04.pdf", chunk_id: 3, section: "p.7", page: 7, text: "Freeze the card." }],
     }),
@@ -172,4 +172,47 @@ it("offers the five starter questions when the conversation is empty", async () 
     "What is the total amount at risk in alerts?",
     "Summarize the key steps in the fraud policy",
   ]);
+});
+
+const SOURCE = {
+  doc: "credit_card.pdf", chunk_id: 4, section: "p.44", page: 44,
+  text: "Issuers keep a register. Issuer shall provide transaction alerts by SMS or in-app notification. Hours are set by the issuer.",
+  focus: "Issuer shall provide transaction alerts by SMS or in-app notification.",
+};
+
+it("shows each source as a card with the cited paragraph and the key sentence highlighted", async () => {
+  streamChat.mockResolvedValue(reply("**What the policy says**\n- Alerts go out by SMS [credit_card.pdf p.44]", { citations: [SOURCE] }));
+  const user = userEvent.setup();
+  renderChat();
+  await open(user);
+  await user.type(screen.getByRole("textbox"), "How are cardholders alerted?{Enter}");
+  const card = await screen.findByRole("group", { name: "Source credit_card.pdf · p.44" });
+  expect(within(card).getByText(/Issuers keep a register/)).toBeInTheDocument();
+  const mark = within(card).getByText("Issuer shall provide transaction alerts by SMS or in-app notification.");
+  expect(mark.tagName).toBe("MARK");
+  expect(within(card).getByText(/Hours are set by the issuer/)).toBeInTheDocument();
+});
+
+it("opens the PDF with the paragraph and the key sentence highlighted from the card or from the inline page chip", async () => {
+  streamChat.mockResolvedValue(reply("- Alerts go out by SMS [credit_card.pdf p.44]", { citations: [SOURCE] }));
+  const user = userEvent.setup();
+  renderChat();
+  await open(user);
+  await user.type(screen.getByRole("textbox"), "How are cardholders alerted?{Enter}");
+  await user.click(await screen.findByRole("button", { name: "Open credit_card.pdf p.44" })); // the chip inside the answer
+  const frame = await screen.findByTitle("credit_card.pdf, page 44");
+  expect(frame.getAttribute("src")).toBe(
+    "/api/documents/credit_card.pdf/file?chunk=4&quote=Issuer%20shall%20provide%20transaction%20alerts%20by%20SMS%20or%20in-app%20notification.#page=44",
+  );
+});
+
+it("shows the start of the paragraph when the answer relies on no single sentence", async () => {
+  streamChat.mockResolvedValue(reply("- Something [credit_card.pdf p.44]", { citations: [{ ...SOURCE, focus: null }] }));
+  const user = userEvent.setup();
+  renderChat();
+  await open(user);
+  await user.type(screen.getByRole("textbox"), "q{Enter}");
+  const card = await screen.findByRole("group", { name: "Source credit_card.pdf · p.44" });
+  expect(within(card).queryByText((_, el) => el?.tagName === "MARK")).not.toBeInTheDocument();
+  expect(within(card).getByText(/Issuers keep a register/)).toBeInTheDocument();
 });

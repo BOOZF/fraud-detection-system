@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, FileText, X } from "lucide-react";
+import { ExternalLink, FileText, PanelRightClose } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  * What to show: a citation (document + the chunk's section label, first PDF page, excerpt, chunk id so the server can
  * highlight it) or a whole document (empty `section` and `text`).
  */
-export type ViewerTarget = { doc: string; section: string; page: number | null; text: string; chunkId?: number };
+export type ViewerTarget = { doc: string; section: string; page: number | null; text: string; chunkId?: number; focus?: string | null };
 
 /** Full text of a non-PDF document, for opening it from the Documents page. */
 function useFileText(doc: string, enabled: boolean) {
@@ -32,15 +32,17 @@ function useFileText(doc: string, enabled: boolean) {
 
 export function DocumentViewer({
   target,
-  onClose,
+  onHide,
   className,
 }: {
   target: ViewerTarget;
-  onClose?: () => void;
+  /** Only for a viewer docked beside other content: hides the document and keeps the rest. A viewer inside a dialog
+   *  leaves this off, because the dialog already has its own close button. */
+  onHide?: () => void;
   className?: string;
 }) {
   const isPdf = target.doc.toLowerCase().endsWith(".pdf");
-  const url = documentUrl(target.doc, isPdf ? target.page : null, isPdf ? target.chunkId : null);
+  const url = documentUrl(target.doc, isPdf ? target.page : null, isPdf ? target.chunkId : null, target.focus);
   const wholeText = !isPdf && !target.text;
   const fileText = useFileText(target.doc, wholeText);
   const excerpt = wholeText ? (fileText ?? "Loading...") : target.text;
@@ -64,9 +66,10 @@ export function DocumentViewer({
           <ExternalLink aria-hidden className="size-3.5" />
           Open in new tab
         </a>
-        {onClose && (
-          <Button type="button" variant="ghost" size="icon" className="size-7" aria-label="Close viewer" onClick={onClose}>
-            <X aria-hidden className="size-4" />
+        {onHide && (
+          <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 gap-1 px-2 text-xs" aria-label="Hide document" onClick={onHide}>
+            <PanelRightClose aria-hidden className="size-3.5" />
+            Hide
           </Button>
         )}
       </header>

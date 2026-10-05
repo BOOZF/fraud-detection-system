@@ -29,11 +29,14 @@ function brief(txn_id: number): Brief {
     llm_ms: 3709,
     facts: { amount_myr: 1028.23, channel: "CARD_ECOM", merchant_cat: "TRAVEL", hour_of_day: 1, txn_ts: "2026-07-15 06:39:13" },
     indicators: ["Foreign transaction", "Amount 16.3x the 30-day average"],
+    coverage: { covered: 4, total: 4 },
     items: QUESTIONS.map((question, i) => ({
       question,
       verdict: `Verdict number ${i + 1}`,
       points: [`First point ${i + 1}`, `Second point ${i + 1}`],
       answer: `First point ${i + 1} Second point ${i + 1}`,
+      covered: true,
+      evidence: i === 1 ? "Act within 15 minutes of the alert." : i === 0 ? null : `Evidence sentence ${i + 1}.`,
       citations:
         i === 0
           ? [
@@ -105,7 +108,7 @@ it("shows the excerpt for a markdown citation, and closing the viewer removes it
   expect(within(viewer).getByText("Act within 15 minutes of the alert.")).toBeInTheDocument();
   expect(document.querySelector("iframe")).toBeNull();
 
-  await user.click(screen.getByRole("button", { name: "Close viewer" }));
+  await user.click(screen.getByRole("button", { name: "Hide document" }));
   expect(screen.queryByRole("region", { name: /Viewing/ })).not.toBeInTheDocument();
 });
 
@@ -147,4 +150,56 @@ it("leads with the transaction facts and the rule-based risk indicators, then th
   expect(within(summary).getByText("Amount 16.3x the 30-day average")).toBeInTheDocument();
   const first = screen.getByRole("heading", { level: 3, name: QUESTIONS[0] }).closest("section") as HTMLElement;
   expect(within(first).getAllByRole("listitem").map((li) => li.textContent).slice(0, 2)).toEqual(["First point 1", "Second point 1"]);
+});
+
+it("shows a single close control while a document is open beside the answers", async () => {
+  getBrief.mockResolvedValue(brief(208));
+  const user = userEvent.setup();
+  open(208);
+  await user.click(await screen.findByRole("button", { name: "Fraud_Detection_SOP.pdf · p.12" }));
+  expect(screen.getAllByRole("button", { name: /close/i })).toHaveLength(1); // the dialog's own
+  expect(screen.getByRole("button", { name: "Hide document" })).toBeInTheDocument();
+});
+
+it("shows the sentence from the policy that an answer rests on", async () => {
+  getBrief.mockResolvedValue(brief(209));
+  open(209);
+  const second = (await screen.findByRole("heading", { level: 3, name: QUESTIONS[1] })).closest("section") as HTMLElement;
+  expect(within(second).getByText(/Policy says/)).toBeInTheDocument();
+  expect(within(second).getByText("“Act within 15 minutes of the alert.”")).toBeInTheDocument();
+  const first = screen.getByRole("heading", { level: 3, name: QUESTIONS[0] }).closest("section") as HTMLElement;
+  expect(within(first).queryByText(/Policy says/)).not.toBeInTheDocument(); // answered from the alert's own facts
+});
+
+it("marks an uncovered question as such, with no source chip, and explains the gap once with a way to fix it", async () => {
+  const b = brief(210);
+  b.coverage = { covered: 1, total: 4 };
+  b.items = b.items.map((item, i) =>
+    i >= 2 ? { ...item, verdict: "Not covered by policies", points: ["Not covered by the uploaded policies."], answer: "x", covered: false, evidence: null, citations: [] } : item,
+  );
+  getBrief.mockResolvedValue(b);
+  open(210);
+  const notice = await screen.findByRole("note");
+  expect(notice).toHaveTextContent("The uploaded documents cover 1 of 4 policy questions");
+  expect(within(notice).getByRole("link", { name: /documents page/i })).toHaveAttribute("href", "/documents");
+  const card = screen.getByRole("heading", { level: 3, name: QUESTIONS[3] }).closest("section") as HTMLElement;
+  expect(card).toHaveAttribute("data-covered", "false");
+  expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+});
+
+it("shows no coverage note when every policy question is covered", async () => {
+  getBrief.mockResolvedValue(brief(211));
+  open(211);
+  await screen.findByText("Verdict number 1");
+  expect(screen.queryByRole("note")).not.toBeInTheDocument();
+});
+
+it("opens a citation with its evidence sentence highlighted in the PDF", async () => {
+  const b = brief(212);
+  b.items[0].citations = [{ doc: "Fraud_Detection_SOP.pdf", chunk_id: 7, section: "p.12", page: 12, text: "pdf excerpt a", focus: "Act within 15 minutes." }];
+  getBrief.mockResolvedValue(b);
+  const user = userEvent.setup();
+  open(212);
+  await user.click(await screen.findByRole("button", { name: "Fraud_Detection_SOP.pdf · p.12" }));
+  expect(document.querySelector("iframe")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file?chunk=7&quote=Act%20within%2015%20minutes.#page=12");
 });

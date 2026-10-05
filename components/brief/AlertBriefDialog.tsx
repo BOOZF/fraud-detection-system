@@ -1,6 +1,7 @@
 "use client";
 
-import { FileText } from "lucide-react";
+import { FileText, Info } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,15 +127,31 @@ function BriefBody({ txnId, prob }: { txnId: number; prob: number }) {
           )}
           {!brief && !error && <BriefSkeleton />}
           {brief && <Summary brief={brief} />}
+          {brief && brief.coverage.covered < brief.coverage.total && (
+            <div role="note" className="flex gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200">
+              <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <p>
+                The uploaded documents cover {brief.coverage.covered} of {brief.coverage.total} policy questions for this card alert.
+                Questions they do not answer are marked <b>Not covered</b> instead of guessing. Upload the bank&apos;s card-fraud procedure on the{" "}
+                <Link href="/documents" className="font-medium underline underline-offset-2">Documents page</Link> to cover them.
+              </p>
+            </div>
+          )}
           {brief?.items.map((item) => (
-            <section key={item.question} className="space-y-2 rounded-lg border bg-card p-4">
+            <section key={item.question} data-covered={item.covered} className={cn("space-y-2 rounded-xl border bg-card p-4", !item.covered && "border-dashed bg-muted/30")}>
               <h3 className="text-sm font-medium text-muted-foreground">{item.question}</h3>
-              <p className="text-base font-semibold leading-snug">{item.verdict}</p>
+              <p className={cn("text-base font-semibold leading-snug", !item.covered && "text-muted-foreground")}>{item.verdict}</p>
               <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
                 {item.points.map((p) => (
                   <li key={p}>{p}</li>
                 ))}
               </ul>
+              {item.evidence && (
+                <blockquote className="border-l-2 border-primary/40 pl-3 text-xs leading-relaxed text-muted-foreground">
+                  <span className="font-medium text-foreground">Policy says: </span>
+                  <span>{`“${item.evidence}”`}</span>
+                </blockquote>
+              )}
               {item.citations.length > 0 && (
                 <ul className="flex flex-wrap gap-2">
                   {item.citations.map((c) => {
@@ -163,8 +180,8 @@ function BriefBody({ txnId, prob }: { txnId: number; prob: number }) {
         </div>
         {showViewer && (
           <DocumentViewer
-            target={{ doc: active.doc, section: active.section, page: active.page, text: active.text, chunkId: active.chunk_id }}
-            onClose={() => setActive(null)}
+            target={{ doc: active.doc, section: active.section, page: active.page, text: active.text, chunkId: active.chunk_id, focus: active.focus }}
+            onHide={() => setActive(null)}
             className="min-h-96 lg:h-full"
           />
         )}

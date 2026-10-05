@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileText, Loader2, MessageCircle, Quote, RotateCcw, Send, SquarePen, X } from "lucide-react";
+import { Check, ChevronDown, FileText, Loader2, MessageCircle, Quote, RotateCcw, Send, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DocumentViewer } from "@/components/viewer/DocumentViewer";
 import { Markdown } from "@/components/chat/Markdown";
 import { useChat, type ChatMessage } from "@/components/chat/ChatProvider";
-import type { ChatCitation } from "@/lib/chat-types";
+import type { ChatCitation, ChatStep } from "@/lib/chat-types";
 import { cn } from "@/lib/utils";
 
 const STARTERS = [
@@ -101,12 +101,6 @@ function ChatPanel() {
           {messages.map((m, i) => (
             <MessageRow key={i} message={m} onCite={setViewing} />
           ))}
-          {pending && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 aria-hidden className="size-4 animate-spin" />
-              Thinking…
-            </div>
-          )}
           {error && !pending && (
             <div role="alert" className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <span className="min-w-0 flex-1">{error}</span>
@@ -165,12 +159,74 @@ function ChatPanel() {
               </DialogHeader>
               <DocumentViewer
                 className="h-[70vh]"
-                target={{ doc: viewing.doc, section: viewing.section, page: viewing.page, text: viewing.text, chunkId: viewing.chunk_id }}
+                target={{ doc: viewing.doc, section: viewing.section, page: viewing.page, text: viewing.text, chunkId: viewing.chunk_id, focus: viewing.focus }}
               />
             </>
           )}
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+/** What the copilot is doing, collapsed to its latest step while it works; expand to see every step. */
+function ThinkingPanel({ steps, streaming }: { steps: ChatStep[]; streaming: boolean }) {
+  const [open, setOpen] = useState(false);
+  const latest = steps[steps.length - 1];
+  return (
+    <div className="w-full max-w-[95%] rounded-lg border bg-muted/40 text-xs">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-muted-foreground hover:text-foreground"
+      >
+        {streaming ? <Loader2 aria-hidden className="size-3.5 shrink-0 animate-spin" /> : <Check aria-hidden className="size-3.5 shrink-0" />}
+        {streaming ? (
+          <>
+            <span className="font-medium text-foreground">Thinking…</span>
+            {latest && <span className="min-w-0 flex-1 truncate">{latest.label}</span>}
+          </>
+        ) : (
+          <>
+            <span className="font-medium text-foreground">How this was answered</span>
+            <span className="min-w-0 flex-1 truncate">{steps.length} steps</span>
+          </>
+        )}
+        <span className="sr-only">{open ? "Hide thinking" : "Show thinking"}</span>
+        <ChevronDown aria-hidden className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <ul aria-label="Thinking steps" className="space-y-1.5 border-t px-3 py-2">
+          {steps.map((s) => (
+            <li key={s.id} className="flex items-start gap-2">
+              {s.status === "running" ? (
+                <Loader2 aria-hidden className="mt-0.5 size-3 shrink-0 animate-spin text-primary" />
+              ) : (
+                <Check aria-hidden className="mt-0.5 size-3 shrink-0 text-emerald-600" />
+              )}
+              <span className="min-w-0">
+                <span className="text-foreground">{s.label}</span>
+                {s.detail && <span className="block text-muted-foreground">{s.detail}</span>}
+                <span className="sr-only">{s.status === "running" ? "In progress" : "Done"}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** The cited paragraph, with the sentence the answer relies on marked (the same colour the PDF highlight uses). */
+function Excerpt({ text, focus }: { text: string; focus?: string | null }) {
+  const at = focus ? text.indexOf(focus) : -1;
+  if (!focus || at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark className="rounded bg-orange-200/80 px-0.5 text-foreground dark:bg-orange-500/30">{focus}</mark>
+      {text.slice(at + focus.length)}
     </>
   );
 }
@@ -185,27 +241,41 @@ function MessageRow({ message, onCite }: { message: ChatMessage; onCite: (c: Cha
       {isUser && message.context && (
         <p className="max-w-[85%] truncate border-l-2 pl-2 text-xs italic text-muted-foreground">“{snippet(message.context, 80)}”</p>
       )}
-      <div
-        className={cn(
-          "rounded-lg px-3 py-2 text-sm",
-          isUser || !message.content.includes("|") ? "max-w-[85%]" : "max-w-full",
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-        )}
-      >
-        {isUser ? <p className="whitespace-pre-wrap">{message.content}</p> : <Markdown text={message.content} />}
-      </div>
+      {!isUser && (message.streaming || (message.steps && message.steps.length > 0)) && (
+        <ThinkingPanel steps={message.steps ?? []} streaming={!!message.streaming} />
+      )}
+      {(isUser || message.content) && (
+        <div
+          className={cn(
+            "rounded-lg px-3 py-2 text-sm",
+            isUser || !message.content.includes("|") ? "max-w-[85%]" : "max-w-full",
+            isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+          )}
+        >
+          {isUser ? <p className="whitespace-pre-wrap">{message.content}</p> : <Markdown text={message.content} citations={message.citations} onCite={onCite} />}
+        </div>
+      )}
       {message.citations && message.citations.length > 0 && (
-        <div className="flex max-w-[95%] flex-wrap gap-1">
+        <div className="flex w-full max-w-[95%] flex-col gap-2">
           {message.citations.map((c, i) => (
-            <button
+            <div
               key={`${c.doc}-${c.chunk_id}-${i}`}
-              type="button"
-              onClick={() => onCite(c)}
-              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              role="group"
+              aria-label={`Source ${c.doc} · ${c.section}`}
+              className="rounded-lg border bg-card p-2 text-xs"
             >
-              <FileText aria-hidden className="size-3" />
-              {c.doc} · {c.section}
-            </button>
+              <button
+                type="button"
+                onClick={() => onCite(c)}
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <FileText aria-hidden className="size-3" />
+                {c.doc} · {c.section}
+              </button>
+              <blockquote className="mt-1.5 line-clamp-5 border-l-2 border-orange-400/70 pl-2 leading-relaxed text-muted-foreground">
+                <Excerpt text={c.text} focus={c.focus} />
+              </blockquote>
+            </div>
           ))}
         </div>
       )}

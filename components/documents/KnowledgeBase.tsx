@@ -139,12 +139,12 @@ export function KnowledgeBase({ docs, error, onRetry, onDeleted }: Props) {
       </CardContent>
     </Card>
     <Dialog open={viewing !== null} onOpenChange={(o) => !o && setViewing(null)}>
-      <DialogContent className="h-[90vh] max-w-[95vw] grid-rows-[auto_minmax(0,1fr)] gap-3 p-4 sm:max-w-[min(1100px,95vw)]">
+      <DialogContent className="h-[90vh] max-w-[95vw] grid-rows-[minmax(0,1fr)] gap-3 p-4 sm:max-w-[min(1100px,95vw)]">
         <DialogHeader className="sr-only">
           <DialogTitle>{viewing}</DialogTitle>
           <DialogDescription>Original document</DialogDescription>
         </DialogHeader>
-        {viewing && <DocumentViewer target={{ doc: viewing, section: "", page: null, text: "" }} onClose={() => setViewing(null)} className="min-h-0" />}
+        {viewing && <DocumentViewer target={{ doc: viewing, section: "", page: null, text: "" }} className="h-full min-h-0" />}
       </DialogContent>
     </Dialog>
     <Dialog open={target !== null} onOpenChange={(o) => !o && close()}>

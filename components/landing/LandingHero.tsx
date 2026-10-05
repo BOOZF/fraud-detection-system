@@ -73,6 +73,9 @@ export function LandingHero() {
           <a href="#how-it-works" className="sw-btn sw-btn-outline">
             See how it works
           </a>
+          <a href="#architecture" className="sw-btn sw-btn-outline">
+            Architecture
+          </a>
         </div>
       </div>
       <LoginDialog open={open} onOpenChange={setOpen} />

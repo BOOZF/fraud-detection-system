@@ -31,11 +31,11 @@ const renderSidebar = () =>
   );
 
 describe("AppSidebar", () => {
-  it("links to Dashboard, Documents and Architecture only, under the Malaysia XX Bank brand", () => {
+  it("links to Dashboard and Documents only, under the Malaysia XX Bank brand", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("href", "/dashboard");
     expect(screen.getByRole("link", { name: /documents/i })).toHaveAttribute("href", "/documents");
-    expect(screen.getByRole("link", { name: /architecture/i })).toHaveAttribute("href", "/architecture");
+    expect(screen.queryByRole("link", { name: /architecture/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^alerts$/i })).not.toBeInTheDocument();
     expect(screen.getByText("Malaysia XX Bank")).toBeInTheDocument();
     expect(screen.getByText("Fraud Copilot")).toBeInTheDocument();
@@ -46,10 +46,10 @@ describe("AppSidebar", () => {
   });
 
   it("marks only the current page as active", () => {
-    pathname = "/architecture";
+    pathname = "/dashboard";
     renderSidebar();
-    expect(screen.getByRole("link", { name: /architecture/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: /dashboard/i })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /documents/i })).not.toHaveAttribute("aria-current");
   });
 
   it("marks Documents active on /documents", () => {
@@ -63,7 +63,7 @@ describe("AppSidebar", () => {
     pathname = "/alerts/42";
     renderSidebar();
     expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: /architecture/i })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: /documents/i })).not.toHaveAttribute("aria-current");
   });
 
   it("logout clears the session and returns to the landing page", async () => {

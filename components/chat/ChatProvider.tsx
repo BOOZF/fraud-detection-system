@@ -2,8 +2,8 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { errorMessage } from "@/lib/api";
-import { sendChat } from "@/lib/chat";
-import type { ChatCitation, ChatTurn } from "@/lib/chat-types";
+import { streamChat } from "@/lib/chat";
+import type { ChatCitation, ChatStep, ChatTurn } from "@/lib/chat-types";
 
 export type ChatMessage = ChatTurn & {
   citations?: ChatCitation[];
@@ -12,6 +12,10 @@ export type ChatMessage = ChatTurn & {
   context?: string;
   /** Alert the highlighted text belongs to, when it lay inside exactly one alert. */
   alertId?: number;
+  /** What the copilot did to answer (assistant messages). */
+  steps?: ChatStep[];
+  /** True while this assistant message is still being written. */
+  streaming?: boolean;
 };
 
 type ChatState = {
@@ -50,18 +54,44 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [alertId, setAlertId] = useState<number | null>(null);
   const [focusToken, setFocusToken] = useState(0);
   const generation = useRef(0);
+  const controller = useRef<AbortController | null>(null);
 
   const ask = useCallback(async (history: ChatMessage[], ctx?: string, alert?: number) => {
     const gen = generation.current;
+    const abort = new AbortController();
+    controller.current = abort;
     setPending(true);
     setError(null);
+    // The assistant message appears at once and fills in: steps (what it is doing), then the answer as it is written.
+    const current: ChatMessage = { role: "assistant", content: "", steps: [], streaming: true };
+    const show = () => gen === generation.current && setMessages([...history, { ...current }]);
+    show();
     try {
       const turns = history.map(({ role, content }) => ({ role, content }));
-      const res = await sendChat(turns, ctx, alert);
+      const res = await streamChat(
+        turns,
+        ctx,
+        alert,
+        {
+          onStep: (step) => {
+            const steps = current.steps ?? [];
+            const at = steps.findIndex((s) => s.id === step.id);
+            current.steps = at >= 0 ? steps.map((s, i) => (i === at ? step : s)) : [...steps, step];
+            show();
+          },
+          onAnswer: (text) => {
+            current.content = text;
+            show();
+          },
+        },
+        abort.signal,
+      );
       if (gen !== generation.current) return;
-      setMessages([...history, { role: "assistant", content: res.answer, citations: res.citations, tools: res.tools }]);
+      const steps = current.steps?.length ? current.steps : undefined;
+      setMessages([...history, { role: "assistant", content: res.answer, citations: res.citations, tools: res.tools, steps }]);
     } catch (err) {
       if (gen !== generation.current) return;
+      setMessages(history); // drop the half-written answer; Retry asks the same question again
       setError(errorMessage(err));
     } finally {
       if (gen === generation.current) setPending(false);
@@ -94,6 +124,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const clear = useCallback(() => {
     generation.current += 1;
+    controller.current?.abort();
     setMessages([]);
     setPending(false);
     setError(null);

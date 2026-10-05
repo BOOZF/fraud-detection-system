@@ -81,6 +81,8 @@ export interface BriefCitation {
   section: string;
   page: number | null;
   text: string;
+  /** The sentence in `text` the answer relies on. */
+  focus?: string | null;
 }
 
 export interface BriefItem {
@@ -88,6 +90,10 @@ export interface BriefItem {
   verdict: string;
   points: string[];
   answer: string;
+  /** False when the uploaded policies do not answer this question (then there is no citation). */
+  covered: boolean;
+  /** The sentence copied from the cited policy page that the answer rests on. */
+  evidence: string | null;
   citations: BriefCitation[];
 }
 
@@ -106,6 +112,7 @@ export interface Brief {
   headline: string;
   facts: BriefFacts;
   indicators: string[];
+  coverage: { covered: number; total: number };
   items: BriefItem[];
   retrieval_ms: number;
   llm_ms: number;

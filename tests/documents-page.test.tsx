@@ -198,7 +198,9 @@ describe("Documents page: view the original", () => {
     await user.click(await screen.findByRole("button", { name: "View Fraud_Detection_SOP.pdf" }));
     const viewer = await screen.findByRole("region", { name: "Viewing Fraud_Detection_SOP.pdf" });
     expect(within(viewer).getByTitle("Fraud_Detection_SOP.pdf")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file");
-    await user.click(screen.getByRole("button", { name: "Close viewer" }));
+    const closers = screen.getAllByRole("button", { name: /close/i });
+    expect(closers).toHaveLength(1); // one close control, not a second one inside the viewer
+    await user.click(closers[0]);
     expect(screen.queryByRole("region", { name: /Viewing/ })).not.toBeInTheDocument();
   });
 
@@ -211,5 +213,19 @@ describe("Documents page: view the original", () => {
     const viewer = await screen.findByRole("region", { name: "Viewing Fraud_Operations_SOP.md" });
     expect(await within(viewer).findByText("Priority 1 alerts within 15 minutes.")).toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+});
+
+describe("Documents page: viewer layout", () => {
+  it("gives the viewer the whole dialog (one full-height row), so the PDF is not squeezed into a short strip", async () => {
+    getDocuments.mockResolvedValue([SOP]);
+    const user = userEvent.setup();
+    render(<DocumentsPage />);
+    await user.click(await screen.findByRole("button", { name: "View Fraud_Detection_SOP.pdf" }));
+    const viewer = await screen.findByRole("region", { name: "Viewing Fraud_Detection_SOP.pdf" });
+    const dialog = viewer.closest('[role="dialog"]') as HTMLElement;
+    expect(dialog.className).toContain("grid-rows-[minmax(0,1fr)]");
+    expect(dialog.className).not.toContain("auto_");
+    expect(viewer).toHaveClass("h-full");
   });
 });

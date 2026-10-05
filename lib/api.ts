@@ -1,3 +1,4 @@
+import type { Overview } from "./overview";
 import type { Alert, AlertDetail, Brief, DeleteResult, DocumentInfo, Kpis, ModelInfo, ScoreResult } from "./types";
 
 // Same-origin by default: next.config.ts proxies /api/* to the FastAPI backend, so the browser
@@ -12,6 +13,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const getKpis = () => request<Kpis>("/api/kpis");
+export const getOverview = () => request<Overview>("/api/overview");
 export const getModel = () => request<ModelInfo>("/api/model");
 
 export const getAlerts = (minProb = 0, limit = 5000) =>

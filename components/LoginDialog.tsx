@@ -59,7 +59,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           <p className="text-xs text-muted-foreground">
             Demo credentials: {DEMO_USERNAME} / {DEMO_PASSWORD}
           </p>
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full bg-black text-white hover:bg-black/70">
             Sign in
           </Button>
         </form>

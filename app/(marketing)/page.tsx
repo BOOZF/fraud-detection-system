@@ -1,3 +1,4 @@
+import { Architecture } from "@/components/landing/Architecture";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { LandingHero } from "@/components/landing/LandingHero";
@@ -11,6 +12,7 @@ export default function LandingPage() {
       <LandingPreview />
       <SuccessCriteria />
       <HowItWorks />
+      <Architecture />
       <LandingFooter />
     </div>
   );

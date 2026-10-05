@@ -49,13 +49,18 @@ it("shows the cited excerpt for documents that have no pages", () => {
   );
 });
 
-it("calls onClose from the close button, which only exists when a handler is given", async () => {
-  const onClose = vi.fn();
-  const { rerender } = render(<DocumentViewer target={pdf} onClose={onClose} />);
-  await userEvent.setup().click(screen.getByRole("button", { name: /close viewer/i }));
-  expect(onClose).toHaveBeenCalledTimes(1);
+it("has no close button of its own, so a dialog around it never shows two", () => {
+  render(<DocumentViewer target={pdf} />);
+  expect(screen.queryByRole("button", { name: /close/i })).not.toBeInTheDocument();
+});
+
+it("offers a clearly labelled Hide document button only when a handler is given", async () => {
+  const onHide = vi.fn();
+  const { rerender } = render(<DocumentViewer target={pdf} onHide={onHide} />);
+  await userEvent.setup().click(screen.getByRole("button", { name: "Hide document" }));
+  expect(onHide).toHaveBeenCalledTimes(1);
   rerender(<DocumentViewer target={pdf} />);
-  expect(screen.queryByRole("button", { name: /close viewer/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Hide document" })).not.toBeInTheDocument();
 });
 
 it("asks the server to highlight the cited passage when the citation carries a chunk id", () => {
@@ -70,4 +75,17 @@ it("asks the server to highlight the cited passage when the citation carries a c
 it("opens a whole document (no citation) from its first page", () => {
   render(<DocumentViewer target={{ doc: "Fraud_Detection_SOP.pdf", section: "", page: null, text: "" }} />);
   expect(screen.getByTitle("Fraud_Detection_SOP.pdf")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file");
+});
+
+it("asks for the key sentence to be highlighted too, URL-encoded and kept to a sensible length", () => {
+  expect(documentUrl("a.pdf", 5, 7, "Issuer shall provide alerts, 100% of the time")).toBe(
+    "/api/documents/a.pdf/file?chunk=7&quote=Issuer%20shall%20provide%20alerts%2C%20100%25%20of%20the%20time#page=5",
+  );
+  expect(documentUrl("a.pdf", 5, 7, "x".repeat(900)).length).toBeLessThan(600);
+  expect(documentUrl("a.pdf", 5, null, "ignored without a chunk")).toBe("/api/documents/a.pdf/file#page=5");
+  render(<DocumentViewer target={{ ...pdf, chunkId: 7, focus: "The key sentence." }} />);
+  expect(screen.getByTitle("Fraud_Detection_SOP.pdf, page 12")).toHaveAttribute(
+    "src",
+    "/api/documents/Fraud_Detection_SOP.pdf/file?chunk=7&quote=The%20key%20sentence.#page=12",
+  );
 });
