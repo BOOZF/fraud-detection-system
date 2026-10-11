@@ -9,6 +9,7 @@ import { getAlert } from "@/lib/api";
 import { myr, num } from "@/lib/format";
 import type { AlertDetail } from "@/lib/types";
 import { priorityOf, ProbBadge } from "./ProbBadge";
+import { ShapDrivers } from "./ShapDrivers";
 import { SqlPanel } from "./SqlPanel";
 import { TdBadge } from "./TdBadge";
 
@@ -45,8 +46,9 @@ export function AlertDetailView({ id }: { id: number }) {
       </div>
     );
 
-  const { txn, prob, reasons, sql, customer, sql_customer } = detail;
+  const { txn, prob, reasons, sql, customer, sql_customer, drivers, sql_drivers } = detail;
   const priority = priorityOf(prob);
+  const hasDrivers = !!drivers && drivers.length > 0;
   const when = (ts: string) => ts.replace("T", " ");
   const customerFacts: [string, string][] = [
     ["Customer ID", String(customer.customer_id)],
@@ -113,19 +115,48 @@ export function AlertDetailView({ id }: { id: number }) {
           </CardHeader>
           <CardContent className="space-y-6">
             {factList(facts)}
-            <div className="space-y-2">
-              <h2 className="text-sm font-semibold">Reason codes</h2>
-              <ul className="flex flex-wrap gap-2">
-                {reasons.map((r) => (
-                  <li key={r}>
-                    <Badge variant="outline">{r}</Badge>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {!hasDrivers && (
+              <div className="space-y-2">
+                <h2 className="text-sm font-semibold">Reason codes</h2>
+                <ul className="flex flex-wrap gap-2">
+                  {reasons.map((r) => (
+                    <li key={r}>
+                      <Badge variant="outline">{r}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+      {hasDrivers && (
+        <Card role="region" aria-labelledby="shap-title">
+          <CardHeader>
+            <CardTitle id="shap-title">Why the model scored it this way</CardTitle>
+            <CardDescription>The features that moved this score most, from the model itself (SHAP).</CardDescription>
+            <div className="flex flex-wrap items-center gap-3">
+              <TdBadge />
+              {sql_drivers && <SqlPanel sql={sql_drivers} />}
+            </div>
+          </CardHeader>
+          <CardContent className="grid items-start gap-8 lg:grid-cols-[3fr_2fr]">
+            <ShapDrivers drivers={drivers!} />
+            <aside className="space-y-2 rounded-xl bg-muted/50 p-4 text-sm" aria-label="How to read this">
+              <h2 className="font-semibold">How to read this</h2>
+              <ul className="list-disc space-y-1.5 pl-4 text-muted-foreground">
+                <li>
+                  <span className="font-medium text-rose-600 dark:text-rose-400">Red</span> bars push the score toward fraud,{" "}
+                  <span className="font-medium text-sky-600 dark:text-sky-400">blue</span> bars push it away.
+                </li>
+                <li>The chip says how strong the push is: Strong, Medium or Slight.</li>
+                <li>Bars are relative within this alert. They rank what mattered; they are not a share of the {Math.round(prob * 100)}%.</li>
+                <li>Hover a row for the raw SHAP value (log-odds).</li>
+              </ul>
+            </aside>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

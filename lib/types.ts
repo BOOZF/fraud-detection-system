@@ -60,6 +60,23 @@ export interface CustomerSummary {
   last_txn_ts: string;
 }
 
+/** One feature's SHAP contribution to a transaction's score: positive pushes toward fraud, negative away from it. */
+export interface ShapDriver {
+  feature: string;
+  label: string;
+  value: string;
+  phrase: string;
+  shap: number;
+  direction: "up" | "down";
+  strength: "strongly" | "moderately" | "slightly";
+}
+
+export interface ShapGlobal {
+  features: { feature: string; label: string; mean_abs_shap: number }[];
+  sample_size: number;
+  sql: string;
+}
+
 export interface AlertDetail {
   txn: Txn;
   customer: CustomerSummary;
@@ -67,6 +84,9 @@ export interface AlertDetail {
   prob: number;
   reasons: string[];
   sql: string;
+  /** Top SHAP drivers; null when SHAP has not been computed for this transaction. */
+  drivers?: ShapDriver[] | null;
+  sql_drivers?: string;
 }
 
 export interface ScoreResult {
@@ -112,6 +132,8 @@ export interface Brief {
   headline: string;
   facts: BriefFacts;
   indicators: string[];
+  /** The model's SHAP drivers of this alert (null when SHAP was not computed for it). */
+  shap?: { drivers: ShapDriver[] | null };
   coverage: { covered: number; total: number };
   items: BriefItem[];
   retrieval_ms: number;

@@ -7,6 +7,7 @@ const getKpis = vi.fn();
 const getOverview = vi.fn();
 const getAlerts = vi.fn();
 vi.mock("@/lib/api", () => ({
+  getShapGlobal: vi.fn().mockResolvedValue({ features: [{ feature: "is_foreign", label: "Foreign transaction", mean_abs_shap: 0.9 }], sample_size: 8000, sql: "SELECT 1" }),
   getKpis: (...a: unknown[]) => getKpis(...a),
   getOverview: (...a: unknown[]) => getOverview(...a),
   getAlerts: (...a: unknown[]) => getAlerts(...a),

@@ -21,7 +21,7 @@ export function SuccessCriteria() {
     },
     {
       title: "Analyst gets an explainable reason for each alert",
-      proof: "Reason codes and fraud probability on every alert page.",
+      proof: "The model's own SHAP drivers and fraud probability on every alert page.",
     },
     {
       title: "GenAI answers grounded in bank policy with citations",

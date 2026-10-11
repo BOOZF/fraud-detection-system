@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api", () => ({
+  getShapGlobal: vi.fn().mockResolvedValue({ features: [{ feature: "is_foreign", label: "Foreign transaction", mean_abs_shap: 0.9 }], sample_size: 8000, sql: "SELECT 1" }),
   getKpis: vi.fn().mockResolvedValue({
     total_txn: 100000, fraud_txn: 1234, fraud_rate: 0.01234, alerts_open: 87,
     fraud_by_channel: [{ channel: "Mobile", txn: 50000, fraud: 900 }], sql: ["SELECT 1"],

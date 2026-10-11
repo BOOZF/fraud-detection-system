@@ -29,6 +29,12 @@ function brief(txn_id: number): Brief {
     llm_ms: 3709,
     facts: { amount_myr: 1028.23, channel: "CARD_ECOM", merchant_cat: "TRAVEL", hour_of_day: 1, txn_ts: "2026-07-15 06:39:13" },
     indicators: ["Foreign transaction", "Amount 16.3x the 30-day average"],
+    shap: {
+      drivers: [
+        { feature: "is_foreign", label: "Foreign transaction", value: "Yes", phrase: "Foreign transaction", shap: 2.05, direction: "up", strength: "strongly" },
+        { feature: "txn_count_1h", label: "Transactions in last hour", value: "0", phrase: "0 transactions in the last hour", shap: -0.17, direction: "down", strength: "slightly" },
+      ],
+    },
     coverage: { covered: 4, total: 4 },
     items: QUESTIONS.map((question, i) => ({
       question,
@@ -139,7 +145,7 @@ it("marks the dialog content with the alert it is about", async () => {
   expect(dialog.getAttribute("data-alert-id")).toBe("204");
 });
 
-it("leads with the transaction facts and the rule-based risk indicators, then the answers as bullet points", async () => {
+it("leads with the transaction facts and the model-driven risk indicators, then the answers as bullet points", async () => {
   getBrief.mockResolvedValue(brief(207));
   open(207);
   await screen.findByText("Verdict number 1");
@@ -202,4 +208,22 @@ it("opens a citation with its evidence sentence highlighted in the PDF", async (
   open(212);
   await user.click(await screen.findByRole("button", { name: "Fraud_Detection_SOP.pdf · p.12" }));
   expect(document.querySelector("iframe")).toHaveAttribute("src", "/api/documents/Fraud_Detection_SOP.pdf/file?chunk=7&quote=Act%20within%2015%20minutes.#page=12");
+});
+
+it("shows the SHAP analysis block, with the same driver chart as the alert page, between the summary and the questions", async () => {
+  getBrief.mockResolvedValue(brief(9311));
+  open(9311);
+  const block = await screen.findByRole("region", { name: "SHAP analysis" });
+  expect(within(block).getByText(/why the model scored it P1 93%/)).toBeInTheDocument();
+  expect(within(block).getByText("Transactions in last hour")).toBeInTheDocument();
+  expect(within(block).getByText(/strongly raises the risk/)).toBeInTheDocument();
+  const summary = screen.getByRole("region", { name: "Transaction summary" });
+  expect(summary.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("leaves the SHAP block out when SHAP was not computed for the alert", async () => {
+  getBrief.mockResolvedValue({ ...brief(9312), shap: { drivers: null } });
+  open(9312);
+  await screen.findByText("Verdict number 1");
+  expect(screen.queryByRole("region", { name: "SHAP analysis" })).not.toBeInTheDocument();
 });

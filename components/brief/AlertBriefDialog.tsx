@@ -13,6 +13,7 @@ import { myr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { DocumentViewer } from "@/components/viewer/DocumentViewer";
 import { ProbBadge } from "../ProbBadge";
+import { ShapDrivers } from "../ShapDrivers";
 import { TdBadge } from "../TdBadge";
 
 // Briefs are cached on the server too, but this makes re-opening an alert instant with no request at all.
@@ -53,7 +54,7 @@ function Summary({ brief }: { brief: Brief }) {
         <Fact label="Time" value={f.txn_ts.slice(0, 16)} />
       </dl>
       <div>
-        <p className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Risk indicators</p>
+        <p className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Top model drivers (SHAP)</p>
         <ul className="flex flex-wrap gap-1.5">
           {brief.indicators.map((r) => (
             <li key={r}>
@@ -62,6 +63,27 @@ function Summary({ brief }: { brief: Brief }) {
           ))}
         </ul>
       </div>
+    </section>
+  );
+}
+
+/** The model's own explanation of this score (SHAP), shown as the same driver chart as the alert page. Never written by the language model. */
+function ShapBlock({ brief }: { brief: Brief }) {
+  const drivers = brief.shap?.drivers;
+  if (!drivers || drivers.length === 0) return null;
+  return (
+    <section aria-label="SHAP analysis" className="space-y-3 rounded-lg border bg-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold">SHAP analysis: why the model scored it {brief.priority ?? ""} {Math.round(brief.prob * 100)}%</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            <span className="font-medium text-rose-600 dark:text-rose-400">Red</span> pushes toward fraud,{" "}
+            <span className="font-medium text-sky-600 dark:text-sky-400">blue</span> away from it. Bars are relative within this alert.
+          </p>
+        </div>
+        <TdBadge />
+      </div>
+      <ShapDrivers drivers={drivers} />
     </section>
   );
 }
@@ -127,6 +149,7 @@ function BriefBody({ txnId, prob }: { txnId: number; prob: number }) {
           )}
           {!brief && !error && <BriefSkeleton />}
           {brief && <Summary brief={brief} />}
+          {brief && <ShapBlock brief={brief} />}
           {brief && brief.coverage.covered < brief.coverage.total && (
             <div role="note" className="flex gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200">
               <Info aria-hidden className="mt-0.5 size-4 shrink-0" />

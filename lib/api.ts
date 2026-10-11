@@ -1,5 +1,5 @@
 import type { Overview } from "./overview";
-import type { Alert, AlertDetail, Brief, DeleteResult, DocumentInfo, Kpis, ModelInfo, ScoreResult } from "./types";
+import type { Alert, AlertDetail, Brief, DeleteResult, DocumentInfo, Kpis, ModelInfo, ScoreResult, ShapGlobal } from "./types";
 
 // Same-origin by default: next.config.ts proxies /api/* to the FastAPI backend, so the browser
 // never needs to reach the backend port (which is not forwarded by the VS Code dev tunnel).
@@ -15,6 +15,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const getKpis = () => request<Kpis>("/api/kpis");
 export const getOverview = () => request<Overview>("/api/overview");
 export const getModel = () => request<ModelInfo>("/api/model");
+export const getShapGlobal = () => request<ShapGlobal>("/api/shap/global");
 
 export const getAlerts = (minProb = 0, limit = 5000) =>
   request<Alert[]>(`/api/alerts?min_prob=${minProb}&limit=${limit}`);

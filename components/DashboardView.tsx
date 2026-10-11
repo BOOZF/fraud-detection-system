@@ -11,6 +11,7 @@ import type { Kpis, ModelInfo, ScoreResult } from "@/lib/types";
 import { ChannelBars } from "./dashboard/ChannelBars";
 import { KpiCard } from "./dashboard/KpiCard";
 import { Panel } from "./dashboard/Panel";
+import { ShapGlobal } from "./dashboard/ShapGlobal";
 import { TopAlerts } from "./dashboard/TopAlerts";
 import { TopMerchants } from "./dashboard/TopMerchants";
 import { TrendChart } from "./dashboard/TrendChart";
@@ -155,27 +156,32 @@ export function DashboardView() {
         !error && <p className="text-sm text-muted-foreground">Loading KPIs...</p>
       )}
 
-      {model && (
-        <Panel title="Model card" description="Trained with Teradata XGBoost, no data egress." actions={<TdBadge />}>
-          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              ["Algorithm", model.algorithm],
-              ["AUC", model.auc.toFixed(3)],
-              ["Gini", model.gini.toFixed(3)],
-              ["Train rows", num(model.train_rows)],
-              ["Test rows", num(model.test_rows)],
-              ["Train time", `${model.train_seconds.toFixed(1)} s`],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-xl bg-muted/50 p-3">
-                <dt className="text-xs font-medium uppercase text-muted-foreground">{k}</dt>
-                <dd className="mt-0.5 text-lg font-semibold">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="mt-4 text-sm">
-            <b>Features:</b> <span className="text-muted-foreground">{model.features.join(", ")}</span>
-          </p>
-        </Panel>
+      {kpis && (
+        <div className="grid gap-5 lg:grid-cols-12">
+          <ShapGlobal className="lg:col-span-7" />
+          {model && (
+            <Panel className="lg:col-span-5" title="Model card" description="Trained with Teradata XGBoost, no data egress." actions={<TdBadge />}>
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {[
+                  ["Algorithm", model.algorithm],
+                  ["AUC", model.auc.toFixed(3)],
+                  ["Gini", model.gini.toFixed(3)],
+                  ["Train rows", num(model.train_rows)],
+                  ["Test rows", num(model.test_rows)],
+                  ["Train time", `${model.train_seconds.toFixed(1)} s`],
+                ].map(([k, v], i) => (
+                  <div key={k} className={`rounded-xl bg-muted/50 p-3 ${i === 0 ? "col-span-2 sm:col-span-3" : ""}`}>
+                    <dt className="text-xs font-medium uppercase text-muted-foreground">{k}</dt>
+                    <dd className={`mt-0.5 font-semibold ${i === 0 ? "text-sm" : "text-lg"}`}>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-4 text-sm">
+                <b>Features:</b> <span className="text-muted-foreground">{model.features.join(", ")}</span>
+              </p>
+            </Panel>
+          )}
+        </div>
       )}
     </div>
   );
